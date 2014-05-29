@@ -1,0 +1,188 @@
+pre {
+	margin: 0;
+}
+
+#game-area {
+	font-family: monospace;
+}
+
+#block {
+	z-index: 5000;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: white;
+}
+
+#top-panel {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	padding: 5px;
+	height: 15px;
+	background-color: black;
+	color: white;
+}
+
+#menu {
+	float: right;
+}
+
+.menu-item {
+	cursor: pointer;
+}
+
+.menu-item:hover {
+	color: gray;
+}
+
+#right-panel {
+	display: inline-block;
+	position: absolute;
+	top: 26px;
+	left: 835px;
+	right: 5px;
+	padding: 10px;
+	height: 600px;
+	min-width: 10px;
+	color: white;
+}
+
+#stats {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 200px;
+	background-color: black;
+	overflow-y: scroll;
+}
+
+#inventory {
+	position: absolute;
+	top: 202px;
+	bottom: 102px;
+	left: 0;
+	right: 0;
+	background-color: black;
+	overflow-y: scroll;
+}
+
+#log {
+	padding: 5px;
+	display: block;
+	margin: 0;
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 90px;
+	overflow-y: scroll;
+	overflow-x: auto;
+	background-color: black;
+	word-wrap: normal;
+}
+
+#map {
+	margin-top: 18px;
+	display: inline-block;
+	height: 600px;
+	width: 800px;
+	line-height: 20px;
+	letter-spacing: 2px;
+	font-size: 18px;
+	padding: 10px 15px 10px 10px;
+	background-color: black;
+	color: white;
+}
+
+#map span {
+	cursor: pointer;
+}
+
+.description {
+	display: inline-block;
+	position: absolute;
+	margin-top: -10px;
+	background-color: white;
+	border: 1px solid gray;
+	color: black;
+	font-size: 10px;
+	line-height: 12px;
+	letter-spacing: normal;
+	z-index: 1000;
+}
+
+#modal {
+	display: none;
+	position: absolute;
+	z-index: 2000;
+	top: 30%;
+	bottom: 30%;
+	left: 30%;
+	right: 30%;
+	border: 1px solid gray;
+	background-color: black;
+	color: white;
+}
+
+#modal-close {
+	cursor: pointer;
+	position: absolute;
+	right: 5px;
+	top: 0;
+	font-size: 25px;
+	z-index: 3000;
+}
+
+#modal-content {
+	display: block;
+	padding: 5px;
+}
+
+.modal-close,
+[data-control],
+[data-response] {
+	cursor: pointer;
+}
+
+.modal-close:hover,
+[data-control]:hover,
+[data-response]:hover,
+[data-control].choosing {
+	color: gray;
+}
+
+.bar {
+	position: relative;
+	height: 20px;
+	border-bottom: 1px solid white;
+}
+
+.bar .bar-title {
+	padding: 2px;
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	top: 0;
+	right: 0;
+	text-align: center;
+	color: gray;
+	z-index: 2500;
+}
+
+.bar .bar-inner {
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	top: 0;
+	background-color: white;
+}
+
+#modal-content .bar {
+	top: 20px;
+	border: 1px solid white;
+}

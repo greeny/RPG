@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<title>RPG</title>
+	<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+	<div id="game-area">
+		<div id="block">Sorry, your browser does not support JavaScript, or it isn't enabled.</div>
+		<div id="top-panel">
+			Current position: <span id="position"></span>
+			<span id="menu">|
+				<span class="menu-item" data-action="menu">Menu</span> |
+				<span class="menu-item" data-action="controls">Controls</span> |
+				<span class="menu-item" data-action="save">Save</span> |
+				<span class="menu-item" data-action="clear-log">Clear log</span> |
+			</span>
+		</div>
+		<pre id="map"></pre>
+		<div id="right-panel">
+			<div id="stats"></div>
+			<div id="inventory"></div>
+			<div id="log"></div>
+		</div>
+		<div id="modal">
+			<div id="modal-close" class="modal-close">&times;</div>
+			<pre id="modal-content"></pre>
+		</div>
+	</div>
+
+	<script>
+		document.getElementById('block').style.display = 'none';
+		var el = document.getElementById('game-area');
+		if(typeof Storage === 'undefined') {
+			el.innerHTML = 'Sorry, your browser does not support localStorage for saving game state.';
+		}
+	</script>
+
+	<script src="js/jquery.js"></script>
+	<script src="js/script.js"></script>
+	<script src="js/default.js"></script>
+	<script>
+		game.start();
+	</script>
+</body>
+</html>
