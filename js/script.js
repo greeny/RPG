@@ -303,11 +303,11 @@ function Game() {
 		var name = entity.getName(), text = speech.text;
 		this.addToLog('[' + name + '] ' + text);
 		if(typeof speechData.responses !== 'undefined' && Array.size(speechData.responses)) {
-			var content = '[' + name + ']<br><br>' + text + '<br><br><br>';
+			var content = '[' + name + ']<br><br>' + text + '<br><br><br><span style="color: gray">Select your response:</span><br><br>';
 			for(var i in speechData.responses) {
 				content += '&nbsp;&nbsp;<span data-response="' + i + '">' + (Number(i) + 1) + '. ' + speechData.responses[i].text + '</span><br>';
 			}
-			$modalContent.html(content + '<br><br>&nbsp;&nbsp;<span style="color: gray">Select your response.</span>')
+			$modalContent.html(content)
 		} else {
 			$modalContent.html('[' + name + ']<br><br>' + text + '<br><br><br>&nbsp;&nbsp;<span style="color: gray">Press any key to close.</span>');
 		}
