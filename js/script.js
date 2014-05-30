@@ -96,9 +96,9 @@ function Game(defaultMap) {
 		'left': 65,
 		'right': 68,
 		'interact': 32,
-		'answer1': 187,
-		'answer2': 50,
-		'answer3': 51,
+		'answer1': 96,
+		'answer2': 97,
+		'answer3': 98,
 		'cancel': 27
 	};
 	var defaultStats = {
@@ -478,7 +478,7 @@ function Game(defaultMap) {
 		});
 
 		$modal.on('click', 'span[data-control]', function() {
-			$self = $(this);
+			var $self = $(this);
 			game.setModalMode($self.data('control'));
 			$self.text('<press a key>').addClass('choosing');
 		});
