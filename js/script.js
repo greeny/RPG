@@ -11,7 +11,7 @@ Array.size = function(arr) {
 	return size;
 };
 
-function Game(defaultMap) {
+function Game() {
 	var position = {
 		x: 0,
 		y: 0
@@ -109,34 +109,31 @@ function Game(defaultMap) {
 	};
 	var stats = {};
 	var modalOpened = 'none', modalMode = '', timedAction = undefined;
+	var speechEntity = undefined, speechData = {};
 	var lastSave = new Date().getTime();
-	var $map = $('#map'), $position = $('#position'), $log = $('#log'), $menu = $('#menu'), $modal = $('#modal'), $stats = $('#stats');
+	var $map = $('#map'), $position = $('#position'), $log = $('#log'), $menu = $('#menu'), $modal = $('#modal'),
+		$stats = $('#stats'), $modalContent = $('#modal-content');
+
+	var entityManager = new EntityManager();
+	var mapManager = new MapManager(entityManager, $map, $position);
 
 	this.saveInterval = 1000 * 30;
-
 	this.storage = new DataStorage();
 
+	this.getMapManager = function() {
+		return mapManager;
+	};
+
+	this.getMap = function() {
+		return mapManager.getCurrentMap();
+	};
+
+	this.getEntityManager = function() {
+		return entityManager;
+	};
+
 	this.renderMap = function() {
-		var x = position.x - 31, y = position.y - 15, map = '';
-		while(y < position.y + 15) {
-			while(x < position.x + 31) {
-				if(y == position.y && x == position.x) {
-					map += '<span data-description="you' + ' (' + x + '|' + y + ')" style="color: green">@</span>';
-				} else {
-					var point = this.map.getPoint(x, y);
-					var char = point.getChar();
-					var c = point.getColor();
-					var description = point.getDescription() + ' (' + x + '|' + y + ')';
-					map += '<span data-description="' + description + '" style="color: ' + c + '">' + char + '</span>';
-				}
-				x++;
-			}
-			map += '\n';
-			x = position.x - 31;
-			y++;
-		}
-		$map.html(map);
-		$position.html('(' + position.x + '|' + position.y + ') - ' + this.map.getPoint(position.x, position.y).getDescription());
+		this.getMap().render(position.x, position.y);
 	};
 
 	this.renderDescription = function($object) {
@@ -154,38 +151,32 @@ function Game(defaultMap) {
 	this.onKeyDown = function(e) {
 		var action = this.getActionByKey(e.keyCode);
 
-		if(modalOpened !== '') {
+		if(modalOpened !== 'none') {
 			if(modalOpened === 'controls' && this.getModalMode() !== '') {
-				this.setControl(this.getModalMode(), e.keyCode);
+				if(this.getActionByKey(e.keyCode) === undefined) {
+					this.setControl(this.getModalMode(), e.keyCode);
+				}
 				this.setModalMode('');
 				this.showModal('controls');
 				e.preventDefault();
-				return;
 			} else if(action === 'cancel') {
 				this.hideModal();
 				this.setModalMode('');
 				this.stopTimedAction();
 				e.preventDefault();
-			} else if(modalOpened === 'speech' && this.getModalMode() === 'close') {
-				this.setModalMode('');
-				this.hideModal();
-				e.preventDefault();
-				return;
-			} else if(modalOpened === 'speech' && typeof this.getModalMode() === 'object') {
-				this.showModal('response', this.getModalMode());
-				e.preventDefault();
-			} else if(modalOpened === 'response') {
-				if(action === 'answer1') {
-					this.respond(0);
-					e.preventDefault();
-				} else if(action === 'answer2') {
-					this.respond(1);
-					e.preventDefault();
-				} else if(action === 'answer3') {
-					this.respond(2);
-					e.preventDefault();
+			} else if(modalOpened === 'speech') {
+				if(typeof speechData.responses !== 'undefined' && Array.size(speechData.responses) > 0) {
+					if(typeof action !== 'undefined' && action.substr(0, 6) === 'answer') {
+						this.respond(Number(action.substr(6,1)) - 1);
+					}
+				} else {
+					speechData = {};
+					this.setModalMode('');
+					this.hideModal();
 				}
+				e.preventDefault();
 			}
+			return;
 		}
 
 		//this.addToLog(e.keyCode + ' = ' + keyMapping[e.keyCode]);
@@ -201,7 +192,7 @@ function Game(defaultMap) {
 		if(action === 'left' || action === 'right' || action === 'up' || action === 'down') {
 			this.move(action);
 		} else if(action === 'interact') {
-			this.map.getPoint(position.x, position.y).onInteract();
+			this.getMap().getEntity(position.x, position.y).onInteract();
 		}
 	};
 
@@ -220,7 +211,7 @@ function Game(defaultMap) {
 			x: position.x + x,
 			y: position.y + y
 		};
-		var point = this.map.getPoint(n.x, n.y);
+		var point = this.getMap().getEntity(n.x, n.y);
 		if(point.isPassable()) {
 			position = n;
 			point.onCollide();
@@ -250,41 +241,19 @@ function Game(defaultMap) {
 		}
 		var $content = $('#modal-content');
 		if(type === 'controls') {
-			$content.html( 'CONTROLS\n' +
-				'========\n' +
-				'Move up    | <span data-control="up">' + keyMapping[this.getKeyByAction('up')] + '</span>\n' +
-				'Move down  | <span data-control="down">' + keyMapping[this.getKeyByAction('down')] + '</span>\n' +
-				'Move left  | <span data-control="left">' + keyMapping[this.getKeyByAction('left')] + '</span>\n' +
-				'Move right | <span data-control="right">' + keyMapping[this.getKeyByAction('right')] + '</span>\n' +
-				'Interact   | <span data-control="interact">' + keyMapping[this.getKeyByAction('interact')] + '</span>\n' +
-				'Answer 1   | <span data-control="answer1">' + keyMapping[this.getKeyByAction('answer1')] + '</span>\n' +
-				'Answer 2   | <span data-control="answer2">' + keyMapping[this.getKeyByAction('answer2')] + '</span>\n' +
-				'Answer 3   | <span data-control="answer3">' + keyMapping[this.getKeyByAction('answer3')] + '</span>\n' +
-				'Cancel     | <span data-control="cancel">' + keyMapping[this.getKeyByAction('cancel')] + '</span>\n' +
-				'\n<span style="color: gray">Click a key to edit it.</span>'
+			$content.html( 'CONTROLS<br>' +
+				'========<br>' +
+				'Move up&nbsp;&nbsp;&nbsp;&nbsp;| <span data-control="up">' + keyMapping[this.getKeyByAction('up')] + '</span><br>' +
+				'Move down&nbsp;&nbsp;| <span data-control="down">' + keyMapping[this.getKeyByAction('down')] + '</span><br>' +
+				'Move left&nbsp;&nbsp;| <span data-control="left">' + keyMapping[this.getKeyByAction('left')] + '</span><br>' +
+				'Move right&nbsp;| <span data-control="right">' + keyMapping[this.getKeyByAction('right')] + '</span><br>' +
+				'Interact&nbsp;&nbsp;&nbsp;| <span data-control="interact">' + keyMapping[this.getKeyByAction('interact')] + '</span><br>' +
+				'Answer 1&nbsp;&nbsp;&nbsp;| <span data-control="answer1">' + keyMapping[this.getKeyByAction('answer1')] + '</span><br>' +
+				'Answer 2&nbsp;&nbsp;&nbsp;| <span data-control="answer2">' + keyMapping[this.getKeyByAction('answer2')] + '</span><br>' +
+				'Answer 3&nbsp;&nbsp;&nbsp;| <span data-control="answer3">' + keyMapping[this.getKeyByAction('answer3')] + '</span><br>' +
+				'Cancel&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span data-control="cancel">' + keyMapping[this.getKeyByAction('cancel')] + '</span><br>' +
+				'<br><span style="color: gray">Click a key to edit it.</span>'
 			);
-		} else if(type === 'speech') {
-			var nick = data.nick;
-			var text = data.text;
-			var responses = data.responses;
-			var callback = data.callback;
-			if(typeof callback === 'function') {
-				callback();
-			}
-			this.addToLog('[' + nick + '] ' + text);
-			if(typeof responses !== 'undefined' && Array.size(responses) > 0) {
-				$content.html('[' + nick + ']\n\n' + text + '\n\n\n  <span style="color: gray">Press any key to respond.</span>');
-				this.setModalMode(responses);
-			} else {
-				$content.html('[' + nick + ']\n\n' + text + '\n\n\n  <span style="color: gray">Press any key to close.</span>');
-				this.setModalMode('close');
-			}
-		} else if(type === 'response') {
-			var content = '<span style="color: gray">Select your response:</span>\n';
-			for(var i in data) {
-				content += '\n<span data-response="' + i + '">' + (Number(i) + 1) + '. ' + data[i].text + '</span>';
-			}
-			$content.html(content);
 		} else if(type === 'timed') {
 			$content.html(
 				$('<div class="bar"></div>').append(
@@ -305,16 +274,16 @@ function Game(defaultMap) {
 	};
 
 	this.respond = function(response) {
-		if(modalOpened !== 'response') {
+		if(modalOpened !== 'speech') {
 			return;
 		}
-		var mode = this.getModalMode()[response];
-		this.addToLog('[You] ' + mode.text);
-		if(typeof mode.modal !== 'undefined') {
-			this.showModal('speech', mode.modal);
+		var data = speechData.responses[response];
+		this.addToLog('[You] ' + data.text);
+		if(typeof data.modal !== 'undefined') {
+			this.speech(speechEntity, data.modal);
 		}
-		if(typeof mode.callback !== 'undefined') {
-			mode.callback();
+		if(typeof data.callback !== 'undefined') {
+			data.callback(speechEntity);
 		}
 	};
 
@@ -324,6 +293,26 @@ function Game(defaultMap) {
 
 	this.getModalMode = function() {
 		return modalMode;
+	};
+
+	this.speech = function(entity, speech) {
+		speechEntity = entity;
+		console.trace();
+		speechData = speech;
+		$modalContent.html('');
+		var name = entity.getName(), text = speech.text;
+		this.addToLog('[' + name + '] ' + text);
+		if(typeof speechData.responses !== 'undefined' && Array.size(speechData.responses)) {
+			var content = '[' + name + ']<br><br>' + text + '<br><br><br>';
+			for(var i in speechData.responses) {
+				content += '&nbsp;&nbsp;<span data-response="' + i + '">' + (Number(i) + 1) + '. ' + speechData.responses[i].text + '</span><br>';
+			}
+			$modalContent.html(content + '<br><br>&nbsp;&nbsp;<span style="color: gray">Select your response.</span>')
+		} else {
+			$modalContent.html('[' + name + ']<br><br>' + text + '<br><br><br>&nbsp;&nbsp;<span style="color: gray">Press any key to close.</span>');
+		}
+		modalOpened = 'speech';
+		$modal.show();
 	};
 
 	this.getKeyByAction = function(action) {
@@ -417,7 +406,7 @@ function Game(defaultMap) {
 	};
 
 	this.save = function() {
-		this.storage.save('map', this.map.getData());
+		//this.storage.save('map', this.map.getData());
 		this.storage.save('stats', stats);
 		this.storage.save('position', position);
 		this.storage.save('controls', controls);
@@ -427,14 +416,8 @@ function Game(defaultMap) {
 		for(var stat in defaultStats) {
 			this.addStat(stat, defaultStats[stat]);
 		}
-		var map = this.storage.load('map', undefined);
-		/*if(typeof map === 'undefined') {
-			this.map = defaultMap;
-		} else {
-			this.map = new Map();
-			this.map.setData(map);
-		}*/ // TODO FIX SAVING AND LOADING OF MAP - there should be no callbacks
-		this.map = defaultMap;
+		//var map = this.storage.load('map', undefined);
+		//this.map = defaultMap;
 		stats = this.storage.load('stats', stats);
 		position = this.storage.load('position', position);
 		controls = this.storage.load('controls', controls);
@@ -458,6 +441,9 @@ function Game(defaultMap) {
 			});
 
 		$menu.on('click', 'span.menu-item', function() {
+			if(!game.canAct()) {
+				return;
+			}
 			var action = $(this).data('action');
 			if(action === 'clear-log') {
 				game.clearLog();
@@ -479,8 +465,10 @@ function Game(defaultMap) {
 
 		$modal.on('click', 'span[data-control]', function() {
 			var $self = $(this);
-			game.setModalMode($self.data('control'));
-			$self.text('<press a key>').addClass('choosing');
+			if(game.getModalMode() === '') {
+				game.setModalMode($self.data('control'));
+				$self.text('<press a key>').addClass('choosing');
+			}
 		});
 
 		setInterval(function() {
@@ -497,91 +485,234 @@ function Game(defaultMap) {
 	};
 }
 
-function Map() {
-	var map = {};
-	var points = {};
+function MapManager(entityManager, $map, $position) {
+	entityManager.addEntityType('empty space');
+	var emptyEntity = entityManager.createEntity('empty space');
+	var maps = {};
+	var current = undefined;
 
-	function getEmptyPoint() {
-		return {
-			'isDynamic': function() {return false},
-			'isPassable': function() {return true},
-			'onCollide': function() {},
-			'onInteract': function() {},
-			'getChar': function() {return ' '},
-			'getColor': function() {return 'transparent'},
-			'getDescription': function() {return 'empty point'}
-		}
-	}
+	this.createMap = function() {
+		var map = new Map(entityManager, $map, $position);
+		map.emptyEntity = emptyEntity;
+		return map;
+	};
 
-	function getWallPoint() {
-		return {
-			'isDynamic': function() {return false},
-			'isPassable': function() {return false},
-			'onCollide': function() {},
-			'onInteract': function() {},
-			'getChar': function() {return '#'},
-			'getColor': function() {return 'gray'},
-			'getDescription': function() {return 'wall'}
-		}
-	}
+	this.addMap = function(name, map) {
+		maps[name] = map;
+	};
 
-	this.definePoint = function(name, point) {
-		if(name !== 'wall') {
-			points[name] = point;
+	this.setCurrentMap = function(name) {
+		if(name in maps) {
+			current = name;
 		}
 	};
 
-	this.setPoint = function(x, y, point) {
-		if(typeof point === 'string') {
-			if(point in points) {
-				point = points[point];
-			} else if(point !== 'wall') {
-				return;
-			}
-		}
-		if(!(x in map)) {
-			map[x] = {};
-		}
-		map[x][y] = point;
-	};
-
-	this.getPoint = function(x, y) {
-		if(!(x in map)) {
-			map[x] = {};
-		}
-		if(!(y in map[x])) {
-			return getEmptyPoint();
+	this.getCurrentMap = function() {
+		if(typeof current !== 'undefined') {
+			return maps[current];
 		} else {
-			var point =  map[x][y];
-			if(point === 'wall') {
-				return getWallPoint();
-			} else {
-				return point;
-			}
+			return undefined;
+		}
+	};
+}
+
+function Map(entityManager, $map, $position) {
+	var entities = {};
+	this.emptyEntity = {};
+
+	function createKey(x, y) {
+		return x + '|' + y;
+	}
+
+	this.getEntity = function(x, y) {
+		var key = createKey(x, y);
+		if(key in entities) {
+			return entities[key];
+		} else {
+			var entity = this.emptyEntity;
+			entity.setData('position', {x: x, y: y});
+			return entity;
 		}
 	};
 
-	this.fromArray = function(x, y, array, types) {
+	this.setEntity = function(x, y, name, data) {
+		entities[createKey(x, y)] = entityManager.createEntity(name, data);
+	};
+
+	this.fromArray = function(x, y, array, types, data) {
 		for(var i in array) {
 			for(var j in array[i]) {
 				var point = array[j][i];
 				if(point !== ' ') {
-					this.setPoint(x+Number(i), y+Number(j), types[point]);
+					this.setEntity(x+Number(i), y+Number(j), types[point], data[point]);
 				}
 			}
 		}
 	};
 
-	this.getData = function() {
-		return {
-			map: map,
-			points: points
+	this.getSaveData = function() {
+		var saveData = {};
+		for(var key in entities) {
+			var data = entities[key].getSaveData();
+			if(data !== {}) {
+				saveData[key] = data;
+			}
+		}
+		return saveData;
+	};
+
+	this.setSaveData = function(data) {
+		for(var key in data) {
+			if(typeof entities[key] !== 'undefined') {
+				entities[key].setSaveData(data[key]);
+			}
+		}
+	};
+
+	this.render = function(x, y) {
+		var position = {x: x, y: y};
+		x = position.x - 31;
+		y = position.y - 15;
+		var map = '';
+		while(y < position.y + 15) {
+			while(x < position.x + 31) {
+				if(y == position.y && x == position.x) {
+					map += '<span data-description="you' + ' (' + x + '|' + y + ')" style="color: green">@</span>';
+				} else {
+					var entity = this.getEntity(x, y);
+					var char = entity.getChar();
+					var c = entity.getColor();
+					var description = entity.getName() + ' (' + x + '|' + y + ')';
+					map += '<span data-description="' + description + '" style="color: ' + c + '">' + char + '</span>';
+				}
+				x++;
+			}
+			map += '\n';
+			x = position.x - 31;
+			y++;
+		}
+		$map.html(map);
+		$position.html('(' + position.x + '|' + position.y + ') - ' + this.getEntity(position.x, position.y).getName());
+	};
+}
+
+function EntityManager() {
+	var types = {};
+
+	this.addEntityType = function(name, defaultMethods, defaultData) {
+		if(typeof defaultMethods === 'undefined') {
+			defaultMethods = {};
+		}
+		if(typeof defaultData === 'undefined') {
+			defaultData = {};
+		}
+		if(typeof defaultData[name] === 'undefined') {
+			defaultData.name = name;
+		}
+		types[name] = {
+			defaultMethods: defaultMethods,
+			defaultData: defaultData
 		};
 	};
 
-	this.setData = function(data) {
-		map = data['map'];
-		points = data['points'];
+	this.createEntity = function(name, data) {
+		if(!(name in types)) {
+			return {};
+		}
+		if(typeof data === 'undefined') {
+			data = {};
+		}
+		var entityType = types[name];
+		var entity = new Entity();
+
+		for(var key in entityType.defaultMethods) {
+			entity[key] = entityType.defaultMethods[key];
+		}
+
+		for(key in entityType.defaultData) {
+			entity.setData(key, entityType.defaultData[key]);
+		}
+
+		for(key in data) {
+			entity.setData(key, data[key]);
+		}
+
+		return entity;
+	};
+}
+
+function Entity() {
+	var data = {};
+	var defaultData = {
+		passable: true,
+		dynamic: false,
+		color: 'transparent',
+		char: ' ',
+		name: 'empty space'
+	};
+
+	this.setData = function(key, value) {
+		data[key] = value;
+	};
+
+	this.getData = function(key, def) {
+		if(key in data) {
+			return data[key];
+		} else {
+			return def;
+		}
+	};
+
+	this.isPassable = function() {
+		return this.getData('passable', defaultData.passable);
+	};
+
+	this.isDynamic = function() {
+		return this.getData('dynamic', defaultData.dynamic);
+	};
+
+	this.getColor = function() {
+		return this.getData('color', defaultData.color);
+	};
+
+	this.getChar = function() {
+		return this.getData('char', defaultData.char);
+	};
+
+	this.getName = function() {
+		return this.getData('name', defaultData.name);
+	};
+
+	this.getPosition = function() {
+		return this.getData('position', undefined);
+	};
+
+	this.getSaveData = function() {
+		var saveData = {};
+		for(var key in data) {
+			if(typeof defaultData[key] === 'undefined' || defaultData[key] !== data[key]) {
+				saveData[key] = data[key];
+			}
+		}
+		return saveData;
+	};
+
+	this.setSaveData = function(saveData) {
+		for(var key in saveData) {
+			data[key] = saveData[key];
+		}
+	};
+
+	this.onInteract = function() {
+
+	};
+
+	this.onCollide = function() {
+
+	};
+
+	this.onAction = function() {
+
 	};
 }
 
@@ -614,3 +745,5 @@ function DataStorage() {
 		}
 	};
 }
+
+game = new Game();

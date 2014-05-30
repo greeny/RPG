@@ -15,7 +15,7 @@
 		<div id="top-panel">
 			Current position: <span id="position"></span>
 			<span id="menu">|
-				<span class="menu-item" data-action="menu">Menu</span> |
+				<span class="menu-item" data-action="settings">Settings</span> |
 				<span class="menu-item" data-action="controls">Controls</span> |
 				<span class="menu-item" data-action="save">Save</span> |
 				<span class="menu-item" data-action="clear-log">Clear log</span> |
@@ -29,7 +29,7 @@
 		</div>
 		<div id="modal">
 			<div id="modal-close" class="modal-close">&times;</div>
-			<pre id="modal-content"></pre>
+			<div id="modal-content"></div>
 		</div>
 	</div>
 
@@ -43,7 +43,8 @@
 
 	<script src="js/jquery.js"></script>
 	<script src="js/script.js"></script>
-	<script src="js/default.js"></script>
+	<script src="js/entities.js"></script>
+	<script src="js/map.js"></script>
 	<script>
 		game.start();
 	</script>

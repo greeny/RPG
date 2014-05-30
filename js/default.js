@@ -1,4 +1,4 @@
-var map = new Map();
+var map = game.getMapManager().createMap();
 map.setPoint(3,3,'wall');
 map.setPoint(-1,0,{
 	'isDynamic': function() {return false},
@@ -41,5 +41,3 @@ map.fromArray(-10, -10, [
 	['#',' ',' ',' ','#'],
 	['#',' ',' ',' ','#']
 ], {'#': 'wall'});
-
-game = new Game(map);
