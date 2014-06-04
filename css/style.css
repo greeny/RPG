@@ -47,7 +47,7 @@ pre {
 	right: 5px;
 	padding: 10px;
 	height: 600px;
-	min-width: 10px;
+	min-width: 300px;
 	color: white;
 }
 
@@ -64,7 +64,7 @@ pre {
 #inventory {
 	position: absolute;
 	top: 202px;
-	bottom: 102px;
+	bottom: 152px;
 	left: 0;
 	right: 0;
 	background-color: black;
@@ -79,15 +79,27 @@ pre {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	height: 90px;
+	height: 140px;
 	overflow-y: scroll;
 	overflow-x: auto;
 	background-color: black;
 	word-wrap: normal;
 }
 
-#map {
+#map-outer {
+	display: inline-block;
 	margin-top: 18px;
+	height: 620px;
+	width: 825px;
+	background-color: black;
+	overflow: hidden;
+	cursor: pointer;
+}
+
+#map {
+	top: 0;
+	left: 0;
+	position: relative;
 	display: inline-block;
 	height: 600px;
 	width: 800px;
@@ -95,17 +107,28 @@ pre {
 	letter-spacing: 2px;
 	font-size: 18px;
 	padding: 10px 15px 10px 10px;
-	background-color: black;
 	color: white;
 }
 
-#map span {
-	cursor: pointer;
+#map .tile {
+	position: absolute;
+	top: 0;
+	left: 0;
 }
 
-.description {
-	display: inline-block;
+#map-border {
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
 	position: absolute;
+	display: inline-block;
+	border: 3px solid gray;
+}
+
+.description { /* TODO FIX DESCRIPTION */
+	display: inline-block;
+	position: relative;
 	margin-top: -10px;
 	background-color: white;
 	border: 1px solid gray;
@@ -126,6 +149,7 @@ pre {
 	right: 30%;
 	border: 1px solid gray;
 	background-color: black;
+	overflow-y: auto;
 	color: white;
 }
 
@@ -145,13 +169,15 @@ pre {
 
 .modal-close,
 [data-control],
-[data-response] {
+[data-response],
+[data-settings] {
 	cursor: pointer;
 }
 
 .modal-close:hover,
 [data-control]:hover,
 [data-response]:hover,
+[data-settings]:hover,
 [data-control].choosing {
 	color: gray;
 }
@@ -180,6 +206,14 @@ pre {
 	bottom: 0;
 	top: 0;
 	background-color: white;
+}
+
+.bar.health .bar-title {
+	color: white;
+}
+
+.bar.health .bar-inner {
+	background-color: red;
 }
 
 #modal-content .bar {

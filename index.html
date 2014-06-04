@@ -13,15 +13,20 @@
 	<div id="game-area">
 		<div id="block">Sorry, your browser does not support JavaScript, or it isn't enabled.</div>
 		<div id="top-panel">
-			Current position: <span id="position"></span>
+			<span id="tile-detail"></span>
 			<span id="menu">|
 				<span class="menu-item" data-action="settings">Settings</span> |
 				<span class="menu-item" data-action="controls">Controls</span> |
 				<span class="menu-item" data-action="save">Save</span> |
 				<span class="menu-item" data-action="clear-log">Clear log</span> |
+				<span class="menu-item" data-action="center-map">Center map</span> |
 			</span>
 		</div>
-		<pre id="map"></pre>
+		<div id="map-outer">
+			<div id="map">
+				<div id="map-border"></div>
+			</div>
+		</div>
 		<div id="right-panel">
 			<div id="stats"></div>
 			<div id="inventory"></div>
@@ -34,15 +39,19 @@
 	</div>
 
 	<script>
-		document.getElementById('block').style.display = 'none';
-		var el = document.getElementById('game-area');
+		var el = document.getElementById('block');
 		if(typeof Storage === 'undefined') {
 			el.innerHTML = 'Sorry, your browser does not support localStorage for saving game state.';
+		} else {
+			document.getElementById('block').style.display = 'none';
 		}
 	</script>
 
 	<script src="js/jquery.js"></script>
-	<script src="js/script.js"></script>
+	<script src="js/essentials.js"></script>
+	<script src="js/app/Renderer.js"></script>
+	<script src="js/app/Logger.js"></script>
+	<script src="js/app/script.js"></script>
 	<script src="js/entities.js"></script>
 	<script src="js/map.js"></script>
 	<script>

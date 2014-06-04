@@ -1,17 +1,5 @@
-function dump(what) {
-	console.log(what);
-	return what;
-}
-
-Array.size = function(arr) {
-	var size = 0, key;
-	for (key in arr) {
-		if (arr.hasOwnProperty(key)) size++;
-	}
-	return size;
-};
-
 function Game() {
+	var actionCounter = 0;
 	var position = {
 		x: 0,
 		y: 0
@@ -87,8 +75,7 @@ function Game() {
 		120: 'F9',
 		121: 'F10',
 		122: 'F11',
-		123: 'F12',
-		187: '1'
+		123: 'F12'
 	};
 	var controls = {
 		'up': 87,
@@ -96,29 +83,34 @@ function Game() {
 		'left': 65,
 		'right': 68,
 		'interact': 32,
-		'answer1': 96,
-		'answer2': 97,
-		'answer3': 98,
+		'answer1': 97,
+		'answer2': 98,
+		'answer3': 99,
 		'cancel': 27
 	};
-	var defaultStats = {
-		health: 'Health',
-		attack: 'Attack',
-		defence: 'Defence',
-		speed: 'Speed'
+	var settings = {
+		autoSave: true,
+		autoSaveMessage: true
 	};
 	var stats = {};
 	var modalOpened = 'none', modalMode = '', timedAction = undefined;
 	var speechEntity = undefined, speechData = {};
 	var lastSave = new Date().getTime();
-	var $map = $('#map'), $position = $('#position'), $log = $('#log'), $menu = $('#menu'), $modal = $('#modal'),
+	var $map = $('#map'), $position = $('#position'), $menu = $('#menu'), $modal = $('#modal'),
 		$stats = $('#stats'), $modalContent = $('#modal-content');
 
 	var entityManager = new EntityManager();
 	var mapManager = new MapManager(entityManager, $map, $position);
 
-	this.saveInterval = 1000 * 30;
+	var renderer = new Renderer();
+	var player = new Player(this);
+
+	this.saveInterval = 1000 * 10;
 	this.storage = new DataStorage();
+
+	this.getRenderer = function() {
+		return renderer;
+	};
 
 	this.getMapManager = function() {
 		return mapManager;
@@ -132,8 +124,16 @@ function Game() {
 		return entityManager;
 	};
 
+	this.getPlayer = function() {
+		return player;
+	};
+
 	this.renderMap = function() {
 		this.getMap().render(position.x, position.y);
+	};
+
+	this.getPosition = function() {
+		return position;
 	};
 
 	this.renderDescription = function($object) {
@@ -149,12 +149,15 @@ function Game() {
 	};
 
 	this.onKeyDown = function(e) {
-		var action = this.getActionByKey(e.keyCode);
+		if(e.which === 187) {
+			e.which = 49; // for 1 or + key
+		}
+		var action = this.getActionByKey(e.which);
 
 		if(modalOpened !== 'none') {
 			if(modalOpened === 'controls' && this.getModalMode() !== '') {
-				if(this.getActionByKey(e.keyCode) === undefined) {
-					this.setControl(this.getModalMode(), e.keyCode);
+				if(this.getActionByKey(e.which) === undefined) {
+					this.setControl(this.getModalMode(), e.which);
 				}
 				this.setModalMode('');
 				this.showModal('controls');
@@ -179,7 +182,7 @@ function Game() {
 			return;
 		}
 
-		//this.addToLog(e.keyCode + ' = ' + keyMapping[e.keyCode]);
+		//this.addToLog(e.which + ' = ' + keyMapping[e.which]);
 		if(typeof action !== 'undefined') {
 			e.preventDefault();
 		} else {
@@ -192,7 +195,12 @@ function Game() {
 		if(action === 'left' || action === 'right' || action === 'up' || action === 'down') {
 			this.move(action);
 		} else if(action === 'interact') {
-			this.getMap().getEntity(position.x, position.y).onInteract();
+			var entity = this.getMap().getEntity(position.x, position.y);
+			entity.onInteract();
+			if(entity.isEnemy()) {
+				entity.onAttack();
+				this.onAttack(entity);
+			}
 		}
 	};
 
@@ -212,27 +220,22 @@ function Game() {
 			y: position.y + y
 		};
 		var point = this.getMap().getEntity(n.x, n.y);
-		if(point.isPassable()) {
+		if(point.isPassable() && !this.getMap().isOutOfBorder(n.x, n.y)) {
+			this.getRenderer().renderPoints(this.getMap(), [
+				{x: position.x, y: position.y},
+				{x: n.x, y: n.y}
+			], n);
 			position = n;
 			point.onCollide();
+			if(point.isEnemy() && point.isAggressive()) {
+				point.onAttack();
+				this.onAttack(point);
+			}
 		}
-		this.renderMap();
 	};
 
 	this.canAct = function() {
 		return modalOpened === 'none';
-	};
-
-	this.addToLog = function(line, color) {
-		if(typeof color === 'undefined') {
-			color = 'white';
-		}
-		$log.html($log.html() + '<span style="color: ' + color + '">' + line + '</span><br>');
-		$log.scrollTop(1e10);
-	};
-
-	this.clearLog = function() {
-		$log.html('');
 	};
 
 	this.showModal = function(type, data) {
@@ -262,6 +265,14 @@ function Game() {
 					$('<div class="bar-inner"></div>')
 				)
 			);
+		} else if(type === 'settings') {
+			$content.html(
+				'SETTINGS<br>' +
+				'========<br>' +
+				'<span data-settings="autoSave">' + (settings.autoSave ? '[*]' : '[ ]') + ' Auto save every 10 seconds.</span><br>' +
+				'<span data-settings="autoSaveMessage">' + (settings.autoSaveMessage ? '[*]' : '[ ]') + ' Display auto save message.</span><br>' +
+				'<br>'
+			);
 		}
 
 		modalOpened = type;
@@ -278,7 +289,7 @@ function Game() {
 			return;
 		}
 		var data = speechData.responses[response];
-		this.addToLog('[You] ' + data.text);
+		Logger.log('You', data.text);
 		if(typeof data.modal !== 'undefined') {
 			this.speech(speechEntity, data.modal);
 		}
@@ -297,11 +308,10 @@ function Game() {
 
 	this.speech = function(entity, speech) {
 		speechEntity = entity;
-		console.trace();
 		speechData = speech;
 		$modalContent.html('');
 		var name = entity.getName(), text = speech.text;
-		this.addToLog('[' + name + '] ' + text);
+		Logger.log(name, text);
 		if(typeof speechData.responses !== 'undefined' && Array.size(speechData.responses)) {
 			var content = '[' + name + ']<br><br>' + text + '<br><br><br><span style="color: gray">Select your response:</span><br><br>';
 			for(var i in speechData.responses) {
@@ -333,33 +343,25 @@ function Game() {
 		this.save();
 	};
 
-	this.addStat = function(name, title) {
-		stats[name] = {
-			title: title,
-			xp: 0,
-			level: 1
-		};
-		this.renderStats();
-	};
-
 	this.getStat = function(name) {
-		return stats[name];
+		return this.getPlayer().getStat(name);
 	};
 
 	this.addXp = function(name, value) {
-		var stat = this.getStat(name);
-		this.addToLog('You recieved ' + value + ' xp in ' + stat.title + '.', 'yellow');
-		stat.xp += value;
-		while(stat.xp >= stat.level * 10) {
-			stat.xp -= stat.level * 10;
-			stat.level++;
-			this.addToLog(stat.title + ' level up!', 'yellow');
-		}
-		this.renderStats();
+		this.getPlayer().addXp(name, value);
 	};
 
 	this.renderStats = function() {
 		$stats.html('');
+		var current = this.getPlayer().getCurrentHp(), max = this.getPlayer().getMaxHp();
+		$stats.append(
+			$('<div class="bar health"></div>').append(
+				$('<div class="bar-title"></div>').html(current + '/' + max + ' HP')
+			).append(
+				$('<div class="bar-inner"></div>').css('width', String(current / max * 100) + '%')
+			)
+		);
+		var stats = this.getPlayer().getStats();
 		for(var k in stats) {
 			var stat = stats[k];
 			var description = stat.title + ' level ' + stat.level + ' (' + stat.xp + '/' + (stat.level * 10) + ' xp)';
@@ -385,6 +387,51 @@ function Game() {
 		timedAction = undefined;
 	};
 
+	this.onAttack = function(entity) {
+		var current = this.getPlayer().getCurrentHp(), max = this.getPlayer().getMaxHp();
+		Logger.log('FIGHT', entity.getName() + ' has attacked you.', 'red');
+		/*$modalContent.html(
+			'<div style="text-align: center;"><span style="color: green">You</span> VS <span style="color: red">'
+			+ entity.getName() + '</span></div>'
+		).append(
+			$('<div class="bar health"></div>').append(
+				$('<div class="bar-title"></div>').html(current + '/' + max + ' HP')
+			).append(
+				$('<div class="bar-inner"></div>').css('width', String(current / max * 100) + '%')
+			)
+		);
+		$modal.show();
+		modalOpened = 'attack';*/
+
+		var pDamage, eDamage, attXp = 1, defXp = 1;
+
+		while(this.getPlayer().getCurrentHp() !== 0 && entity.getCurrentHp() !== 0) {
+			pDamage = entity.damage(this.getPlayer().getStat('attack').level - entity.getDefence());
+			eDamage = this.getPlayer().damage(entity.getAttack() - this.getPlayer().getStat('defence').level);
+			Logger.log('FIGHT', 'You have dealt ' + pDamage + ' damage to ' + entity.getName(), 'green');
+			Logger.log('FIGHT', entity.getName() + ' has dealt ' + eDamage + ' damage to you.', 'red');
+			attXp += pDamage / 10;
+			defXp += eDamage / 10;
+		}
+		if(this.getPlayer().getCurrentHp() === 0) {
+			Logger.log('FIGHT', 'You have been killed by ' + entity.getName() + '.', 'red');
+		} else {
+			Logger.log('FIGHT', 'You have killed ' + entity.getName() + '.', 'green');
+			this.getMap().setEntity(position.x, position.y, 'empty space');
+			this.getMap().render(position.x, position.y);
+			this.getPlayer().addXp('attack', attXp);
+			this.getPlayer().addXp('defence', defXp);
+		}
+	};
+
+	this.toggleSettings = function(key) {
+		settings[key] = !settings[key];
+		this.showModal('settings');
+	};
+
+	this.onSecond = function() {
+	};
+
 	this.tick = function() {
 		if(timedAction !== undefined) {
 			var time = new Date().getTime() - timedAction.start;
@@ -398,29 +445,36 @@ function Game() {
 				$modal.find('.bar-inner').css('width', String(percentage) + '%');
 			}
 		}
+		if((++actionCounter) % 10 === 0) {
+			this.getMap().onTick();
+		}
+		if(actionCounter === 100) {
+			actionCounter = 0;
+			this.onSecond();
+		}
 		if(lastSave + this.saveInterval <= new Date().getTime()) {
-			this.save();
+			if(settings.autoSave) {
+				this.save();
+				if(settings.autoSaveMessage) {
+					Logger.log('AutoSave', 'Game saved.', 'gray');
+				}
+			}
 			lastSave = new Date().getTime();
-			this.addToLog('[AutoSave] Game saved.', 'gray');
 		}
 	};
 
 	this.save = function() {
-		//this.storage.save('map', this.map.getData());
-		this.storage.save('stats', stats);
+		this.storage.save('player', this.getPlayer().getSaveData());
 		this.storage.save('position', position);
 		this.storage.save('controls', controls);
+		this.storage.save('settings', settings);
 	};
 
 	this.load = function() {
-		for(var stat in defaultStats) {
-			this.addStat(stat, defaultStats[stat]);
-		}
-		//var map = this.storage.load('map', undefined);
-		//this.map = defaultMap;
-		stats = this.storage.load('stats', stats);
+		this.getPlayer().setSaveData(this.storage.load('player', this.getPlayer().getSaveData()));
 		position = this.storage.load('position', position);
 		controls = this.storage.load('controls', controls);
+		settings = this.storage.load('settings', settings);
 	};
 
 	this.registerEvents = function() {
@@ -429,16 +483,16 @@ function Game() {
 		});
 
 		$map.on('mouseover', 'span[data-description]', function() {
-			game.renderDescription($(this));
+			game.getRenderer().renderEntityDescription($(this));
 		}).on('mouseout', 'span[data-description]', function() {
-				game.hideDescription();
-			});
+			game.getRenderer().hideEntityDescription();
+		});
 
 		$stats.on('mouseover', 'div[data-description]', function() {
 			game.renderDescription($(this));
 		}).on('mouseout', 'div[data-description]', function() {
-				game.hideDescription();
-			});
+			game.hideDescription();
+		});
 
 		$menu.on('click', 'span.menu-item', function() {
 			if(!game.canAct()) {
@@ -446,12 +500,16 @@ function Game() {
 			}
 			var action = $(this).data('action');
 			if(action === 'clear-log') {
-				game.clearLog();
+				Logger.clear();
 			} else if(action === 'controls') {
 				game.showModal('controls');
 			} else if(action === 'save') {
 				game.save();
-				game.addToLog('Game saved.', 'gray');
+				Logger.log('INFO', 'Game saved.', 'gray');
+			} else if(action === 'center-map') {
+				$map.css('left', 0).css('top', 0);
+			} else if(action === 'settings') {
+				game.showModal('settings');
 			}
 		});
 
@@ -461,6 +519,10 @@ function Game() {
 
 		$modal.on('click', '[data-response]', function() {
 			game.respond($(this).data('response'));
+		});
+
+		$modal.on('click', '[data-settings]', function() {
+			game.toggleSettings($(this).data('settings'));
 		});
 
 		$modal.on('click', 'span[data-control]', function() {
@@ -479,21 +541,126 @@ function Game() {
 	this.start = function() {
 		this.load();
 		this.save();
-		this.renderStats();
 		this.registerEvents();
 		this.renderMap();
+		this.getPlayer().onStart();
 	};
 }
 
+function Player(game) {
+	var currentHp = 10, maxHp = 10;
+	var stats = {};
+	var defaultStats = {
+		attack: 'Attack',
+		defence: 'Defence',
+		speed: 'Speed'
+	};
+
+	function renderStats() {
+		game.getRenderer().renderStats({
+			currentHp: currentHp,
+			maxHp: maxHp,
+			stats: stats
+		});
+	}
+
+	this.getGame = function() {
+		return game;
+	};
+
+	this.getCurrentHp = function() {
+		return ~~currentHp;
+	};
+
+	this.setCurrentHp = function(value) {
+		var delta = currentHp - this.getCurrentHp();
+		currentHp = value + delta;
+		renderStats();
+	};
+
+	this.getMaxHp = function() {
+		return maxHp;
+	};
+
+	this.damage = function(value) {
+		var c = this.getCurrentHp();
+		if(value < 0) value = 0;
+		currentHp -= value;
+		renderStats();
+		return c - this.getCurrentHp();
+	};
+
+	this.addStat = function(name, title, render) {
+		stats[name] = {
+			title: title,
+			xp: 0,
+			level: 1
+		};
+		if(typeof render === 'undefined') {
+			render = true;
+		}
+		if(render) {
+			renderStats();
+		}
+	};
+
+	this.getStat = function(name) {
+		return stats[name];
+	};
+
+	this.getStats = function() {
+		return stats;
+	};
+
+	this.addXp = function(name, value) {
+		var stat = this.getStat(name);
+		value = ~~value;
+		if(typeof stat !== 'undefined') {
+			stat.xp += value;
+			Logger.log('INFO', 'You received ' + value + ' xp in ' + stat.title + '.', 'yellow');
+			while(stat.xp >= stat.level * 10) {
+				stat.xp -= stat.level * 10;
+				stat.level++;
+				Logger.log('INFO', stat.title + ' level up.', 'yellow');
+			}
+			renderStats();
+		}
+	};
+
+	this.getSaveData = function() {
+		return {
+			currentHp: currentHp,
+			maxHp: maxHp,
+			stats: stats
+		};
+	};
+
+	this.setSaveData = function(data) {
+		currentHp = data.currentHp;
+		maxHp = data.maxHp;
+		stats = data.stats;
+	};
+
+	this.onStart = function() {
+		renderStats();
+	};
+
+	for(var k in defaultStats) {
+		this.addStat(k, defaultStats[k], false);
+	}
+}
+
 function MapManager(entityManager, $map, $position) {
-	entityManager.addEntityType('empty space');
-	var emptyEntity = entityManager.createEntity('empty space');
 	var maps = {};
 	var current = undefined;
 
+	function getEmptyEntity(map) {
+		return entityManager.createEntity(map, 'empty space')
+	}
+
 	this.createMap = function() {
 		var map = new Map(entityManager, $map, $position);
-		map.emptyEntity = emptyEntity;
+		map.emptyEntity = getEmptyEntity(map);
 		return map;
 	};
 
@@ -518,11 +685,41 @@ function MapManager(entityManager, $map, $position) {
 
 function Map(entityManager, $map, $position) {
 	var entities = {};
+	var dynamicEntities = {};
+	var needsRender = false;
+	var lastRender = {x: 0, y: 0};
+	var border = {top: 0, left: 0, bottom: 0, right: 0};
 	this.emptyEntity = {};
 
 	function createKey(x, y) {
 		return x + '|' + y;
 	}
+
+	function renderBorder() {
+		$('#map-border')
+			.css('top', (border.top + 15) * 21)
+			.css('left', (border.left + 32) * 13)
+			.css('bottom', (-border.bottom + 14.5) * 21)
+			.css('right', (-border.right + 30) * 13);
+	}
+
+	this.setBorder = function(top, left, bottom, right) {
+		border = {
+			top: top,
+			left: left,
+			right: right,
+			bottom: bottom
+		};
+		renderBorder();
+	};
+
+	this.getBorder = function() {
+		return border;
+	};
+
+	this.isOutOfBorder = function(x, y) {
+		return !(x >= border.left && x <= border.right && y >= border.top && y <= border.bottom);
+	};
 
 	this.getEntity = function(x, y) {
 		var key = createKey(x, y);
@@ -536,10 +733,19 @@ function Map(entityManager, $map, $position) {
 	};
 
 	this.setEntity = function(x, y, name, data) {
-		entities[createKey(x, y)] = entityManager.createEntity(name, data);
+		if(this.isOutOfBorder(x, y)) return;
+		var key = createKey(x, y);
+		var entity = entities[key] = entityManager.createEntity(this, name, data);
+		entity.setPosition({x: x, y: y});
+		if(entity.isDynamic()) {
+			dynamicEntities[key] = true;
+		}
 	};
 
 	this.fromArray = function(x, y, array, types, data) {
+		if(typeof data === 'undefined') {
+			data = {};
+		}
 		for(var i in array) {
 			for(var j in array[i]) {
 				var point = array[j][i];
@@ -570,29 +776,62 @@ function Map(entityManager, $map, $position) {
 	};
 
 	this.render = function(x, y) {
-		var position = {x: x, y: y};
-		x = position.x - 31;
-		y = position.y - 15;
+		game.getRenderer().renderFullMap(this, game.getPosition());
+		/*var pPosition = lastRender = {x: x, y: y}; // TODO FIX RENDERING
+		var position = {x: 0, y: 0};
+		x = border.left;
+		y = border.top;
 		var map = '';
-		while(y < position.y + 15) {
-			while(x < position.x + 31) {
-				if(y == position.y && x == position.x) {
+		while(y <= border.bottom) {
+			while(x <= border.right) {
+				if(y == pPosition.y && x == pPosition.x) {
 					map += '<span data-description="you' + ' (' + x + '|' + y + ')" style="color: green">@</span>';
 				} else {
 					var entity = this.getEntity(x, y);
-					var char = entity.getChar();
+					var symbol = entity.getChar();
 					var c = entity.getColor();
 					var description = entity.getName() + ' (' + x + '|' + y + ')';
-					map += '<span data-description="' + description + '" style="color: ' + c + '">' + char + '</span>';
+					map += '<span data-description="' + description + '" style="color: ' + c + '">' + symbol + '</span>';
 				}
 				x++;
 			}
 			map += '\n';
-			x = position.x - 31;
+			x = border.left;
 			y++;
 		}
-		$map.html(map);
-		$position.html('(' + position.x + '|' + position.y + ') - ' + this.getEntity(position.x, position.y).getName());
+		$map.html($('<div id="map-border"></div>').html(map));
+		renderBorder();
+		//$('#map-border').css('top', -border.top * 21).css('left', -border.left * 13).css('bottom', -border.bottom * 21).css('right', -border.right * 13);
+		$position.html('(' + pPosition.x + '|' + pPosition.y + ') - ' + this.getEntity(pPosition.x, pPosition.y).getName());
+		needsRender = false;*/
+	};
+
+	this.onTick = function() {
+		for(var key in dynamicEntities) {
+			entities[key].onAction();
+		}
+		if(needsRender) {
+			this.render(lastRender.x, lastRender.y);
+		}
+	};
+
+	this.moveEntity = function(from, to) {
+		var keyFrom = createKey(from.x, from.y), keyTo = createKey(to.x, to.y);
+		if(this.isOutOfBorder(to.x, to.y)) return;
+		if(typeof entities[keyFrom] !== 'undefined') {
+			var entity = entities[keyTo] = entities[keyFrom];
+			entity.setPosition(to);
+			delete entities[keyFrom];
+		}
+		if(typeof dynamicEntities[keyFrom] !== 'undefined') {
+			dynamicEntities[keyTo] = true;
+			delete dynamicEntities[keyFrom];
+		}
+		game.getRenderer().renderPoints(this, [
+			{x: from.x, y: from.y},
+			{x: to.x, y: to.y}
+		], game.getPosition());
+		//needsRender = true;
 	};
 }
 
@@ -606,7 +845,7 @@ function EntityManager() {
 		if(typeof defaultData === 'undefined') {
 			defaultData = {};
 		}
-		if(typeof defaultData[name] === 'undefined') {
+		if(typeof defaultData.name === 'undefined') {
 			defaultData.name = name;
 		}
 		types[name] = {
@@ -615,7 +854,7 @@ function EntityManager() {
 		};
 	};
 
-	this.createEntity = function(name, data) {
+	this.createEntity = function(map, name, data) {
 		if(!(name in types)) {
 			return {};
 		}
@@ -623,7 +862,7 @@ function EntityManager() {
 			data = {};
 		}
 		var entityType = types[name];
-		var entity = new Entity();
+		var entity = new Entity(map);
 
 		for(var key in entityType.defaultMethods) {
 			entity[key] = entityType.defaultMethods[key];
@@ -639,16 +878,27 @@ function EntityManager() {
 
 		return entity;
 	};
+
+	this.addEntityType('empty space');
 }
 
-function Entity() {
+function Entity(map) {
 	var data = {};
 	var defaultData = {
 		passable: true,
 		dynamic: false,
+		enemy: false,
+		aggressive: false,
 		color: 'transparent',
-		char: ' ',
-		name: 'empty space'
+		symbol: '&nbsp;',
+		name: 'empty space',
+		stats: {
+			currentHp: 10,
+			maxHp: 10,
+			attack: 1,
+			defence: 1,
+			speed: 1
+		}
 	};
 
 	this.setData = function(key, value) {
@@ -663,6 +913,10 @@ function Entity() {
 		}
 	};
 
+	this.isEmpty = function() {
+		return this.getData('name', defaultData.name) === 'empty space';
+	};
+
 	this.isPassable = function() {
 		return this.getData('passable', defaultData.passable);
 	};
@@ -671,12 +925,20 @@ function Entity() {
 		return this.getData('dynamic', defaultData.dynamic);
 	};
 
+	this.isEnemy = function() {
+		return this.getData('enemy', defaultData.enemy);
+	};
+
+	this.isAggressive = function() {
+		return this.getData('aggressive', defaultData.aggressive);
+	};
+
 	this.getColor = function() {
 		return this.getData('color', defaultData.color);
 	};
 
 	this.getChar = function() {
-		return this.getData('char', defaultData.char);
+		return this.getData('symbol', defaultData.symbol);
 	};
 
 	this.getName = function() {
@@ -685,6 +947,10 @@ function Entity() {
 
 	this.getPosition = function() {
 		return this.getData('position', undefined);
+	};
+
+	this.setPosition = function(position) {
+		this.setData('position', position);
 	};
 
 	this.getSaveData = function() {
@@ -701,6 +967,64 @@ function Entity() {
 		for(var key in saveData) {
 			data[key] = saveData[key];
 		}
+	};
+
+	this.move = function(direction) {
+		var x = this.getPosition().x, y = this.getPosition().y;
+		if(direction === 'left') {
+			x--;
+		} else if(direction === 'right') {
+			x++;
+		} else if(direction === 'up') {
+			y--;
+		} else if(direction === 'down') {
+			y++;
+		}
+		if(map.getEntity(x, y).isEmpty() && !map.isOutOfBorder(x, y)) {
+			map.moveEntity(this.getPosition(), {x: x, y: y});
+		}
+	};
+
+	this.getStats = function() {
+		return this.getData('stats', defaultData.stats);
+	};
+
+	this.getAttack = function() {
+		return this.getStats().attack;
+	};
+
+	this.getDefence = function() {
+		return this.getStats().defence;
+	};
+
+	this.getSpeed = function() {
+		return this.getStats().speed;
+	};
+
+	this.getCurrentHp = function() {
+		return this.getStats().currentHp;
+	};
+
+	this.getMaxHp = function() {
+		return this.getStats().maxHp;
+	};
+
+	this.damage = function(value) {
+		var stats = this.getStats();
+		var c = stats.currentHp;
+		if(value < 0) {
+			value = 0;
+		}
+		stats.currentHp -= value;
+		if(stats.currentHp < 0) {
+			stats.currentHp = 0;
+		}
+		this.setData('stats', stats);
+		return c - stats.currentHp;
+	};
+
+	this.onAttack = function() {
+
 	};
 
 	this.onInteract = function() {

@@ -1,7 +1,7 @@
 var entityManager = game.getEntityManager();
 entityManager.addEntityType('wall', {}, {
 	passable: false,
-	char: '#',
+	symbol: '#',
 	color: 'gray'
 });
 
@@ -19,7 +19,7 @@ entityManager.addEntityType('tutor', {
 					var xp = entity.getData('xp');
 					var duration = entity.getData('duration');
 					game.setTimedAction('Training ' + skill + '...', duration, function() {
-						game.addXp(skill, xp);
+						game.getPlayer().addXp(skill, xp);
 					});
 				}},
 				{text: "No!", modal: {text: 'Okay, have a nice day!'}}
@@ -30,6 +30,40 @@ entityManager.addEntityType('tutor', {
 	skill: 'attack',
 	xp: 5,
 	duration: 5000,
-	char: 'T',
+	symbol: 'T',
 	color: 'blue'
 });
+
+entityManager.addEntityType('villager', {
+	onInteract: function() {
+		game.speech(this, {
+			text: 'Hello!'
+		});
+	},
+	onAction: function() {
+		if(Math.random() * 100 > 95) {
+			if(Math.random() * 100 > 75) {
+				this.move('up');
+			} else if(Math.random() * 75 > 50) {
+				this.move('down');
+			} else if(Math.random() * 50 > 25) {
+				this.move('left');
+			} else {
+				this.move('right');
+			}
+		}
+	}
+}, {
+	dynamic: true,
+	color: 'white',
+	symbol: 'v'
+});
+
+entityManager.addEntityType('enemy', {
+
+}, {
+	enemy: true,
+	color: 'red',
+	symbol: 'x'
+});
+// TODO add attack functionality (maybe some modal with attack data... Two health bars... Or something... AND ALSO REFACTOR MAP RENDERING
