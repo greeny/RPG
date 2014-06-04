@@ -66,4 +66,3 @@ entityManager.addEntityType('enemy', {
 	color: 'red',
 	symbol: 'x'
 });
-// TODO add attack functionality (maybe some modal with attack data... Two health bars... Or something... AND ALSO REFACTOR MAP RENDERING

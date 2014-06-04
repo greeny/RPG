@@ -116,6 +116,10 @@ pre {
 	left: 0;
 }
 
+#map.grid .tile {
+	border: 1px solid #111111;
+}
+
 #map-border {
 	top: 0;
 	left: 0;
@@ -126,10 +130,9 @@ pre {
 	border: 3px solid gray;
 }
 
-.description { /* TODO FIX DESCRIPTION */
-	display: inline-block;
-	position: relative;
-	margin-top: -10px;
+.description {
+	display: none;
+	margin-top: 5px;
 	background-color: white;
 	border: 1px solid gray;
 	color: black;
@@ -137,6 +140,12 @@ pre {
 	line-height: 12px;
 	letter-spacing: normal;
 	z-index: 1000;
+	position: absolute;
+	white-space: nowrap;
+}
+
+[data-description]:hover .description {
+	display: block;
 }
 
 #modal {

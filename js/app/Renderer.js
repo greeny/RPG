@@ -12,9 +12,9 @@ function Renderer() {
 
 	function renderEntity($tile, entity) {
 		var position = entity.getPosition();
-		$tile.data('description', entity.getName() + ' (' + position.x + '|' + position.y + ')')
-			.css('color', entity.getColor())
-			.html(entity.getChar());
+		$tile.css('color', entity.getColor())
+			.html(entity.getChar())
+			.append('<div class="description">' + entity.getName() + ' (' + position.x + '|' + position.y + ')</div>');
 	}
 
 	function setLastRenderData(key, value) {
@@ -25,7 +25,8 @@ function Renderer() {
 		var data = x + '|' + y;
 		var tile = $map.find('[data-tile="' + data + '"]');
 		if(tile.length < 1) {
-			$map.append('<span class="tile" data-description="" data-tile="' + data + '" style="left: ' + (x - borderLeft) * 13 + 'px; top: ' + (y - borderTop) * 21 + 'px;"></span>');
+			$map.append('<span class="tile" data-description data-tile="' + data + '" style="left: ' + (x - borderLeft) * 13 + 'px; top: ' + (y - borderTop) * 21 + 'px;">' +
+				'<span class="description">(' + x + '|' + y + ')</span></span>');
 			tile = $map.find('[data-tile="' + data + '"]');
 		}
 		return tile;
@@ -62,11 +63,11 @@ function Renderer() {
 			$bar = $stats.find('[data-stats="' + k + '"]');
 			if($bar.length < 1) {
 				$stats.append(
-					$('<div class="bar" data-stats="' + k + '" data-description="' + description + '"></div>').append(
+					$('<div class="bar" data-stats="' + k + '" data-description></div>').append(
 						$('<div class="bar-title"></div>').html(stat.title + ' level ' + stat.level)
 					).append(
 						$('<div class="bar-inner"></div>').css('width', String(stat.xp / (stat.level * 10) * 100) + '%')
-					)
+					).append('<div class="description">' + description + '</div>')
 				);
 				$bar = $stats.find('[data-stats="' + k + '"]');
 			}
@@ -89,7 +90,7 @@ function Renderer() {
 				$tile = getMapTile(tx, ty, border.top, border.left);
 				entity = map.getEntity(tx, ty);
 				if(tx === position.x && ty === position.y) {
-					$tile.data('description', 'You (' + tx + '|' + ty + ')').css('color', 'green').html('@');
+					$tile.css('color', 'green').html('@').append('<div class="description">You (' + tx + '|' + ty + ')</div>');
 				} else {
 					renderEntity($tile, entity);
 				}
@@ -101,8 +102,8 @@ function Renderer() {
 		$map
 			.css('top', (border.top + 15) * 21)
 			.css('left', (border.left + 32) * 13)
-			.css('bottom', (-border.bottom + 13) * 21 + 2)
-			.css('right', (-border.right + 30) * 13);
+			.css('bottom', (-border.bottom + 13) * 21 + 4)
+			.css('right', (-border.right + 30) * 13 - 1);
 	};
 
 	this.renderPoints = function(map, points, position) {
@@ -111,7 +112,7 @@ function Renderer() {
 			var entity = points[k];
 			var $tile = getMapTile(entity.x, entity.y, border.top, border.left);
 			if(position.x === entity.x && position.y === entity.y) {
-				$tile.data('description', 'You (' + entity.x + '|' + entity.y + ')').css('color', 'green').html('@');
+				$tile.css('color', 'green').html('@').append('<div class="description">You (' + entity.x + '|' + entity.y + ')</div>');
 			} else {
 				renderEntity($tile, map.getEntity(entity.x, entity.y));
 			}

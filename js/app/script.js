@@ -90,17 +90,18 @@ function Game() {
 	};
 	var settings = {
 		autoSave: true,
-		autoSaveMessage: true
+		autoSaveMessage: true,
+		showGrid: true
 	};
 	var stats = {};
 	var modalOpened = 'none', modalMode = '', timedAction = undefined;
 	var speechEntity = undefined, speechData = {};
 	var lastSave = new Date().getTime();
-	var $map = $('#map'), $position = $('#position'), $menu = $('#menu'), $modal = $('#modal'),
+	var $map = $('#map'), $menu = $('#menu'), $modal = $('#modal'),
 		$stats = $('#stats'), $modalContent = $('#modal-content');
 
 	var entityManager = new EntityManager();
-	var mapManager = new MapManager(entityManager, $map, $position);
+	var mapManager = new MapManager(entityManager);
 
 	var renderer = new Renderer();
 	var player = new Player(this);
@@ -136,17 +137,17 @@ function Game() {
 		return position;
 	};
 
-	this.renderDescription = function($object) {
+	/*this.renderDescription = function($object) {
 		$object.after(
 			$('<pre></pre>')
 				.addClass('description')
 				.html($object.data('description'))
 		);
-	};
+	};*/
 
-	this.hideDescription = function() {
+	/*this.hideDescription = function() {
 		$('.description').remove();
-	};
+	};*/
 
 	this.onKeyDown = function(e) {
 		if(e.which === 187) {
@@ -271,6 +272,7 @@ function Game() {
 				'========<br>' +
 				'<span data-settings="autoSave">' + (settings.autoSave ? '[*]' : '[ ]') + ' Auto save every 10 seconds.</span><br>' +
 				'<span data-settings="autoSaveMessage">' + (settings.autoSaveMessage ? '[*]' : '[ ]') + ' Display auto save message.</span><br>' +
+				'<span data-settings="showGrid">' + (settings.showGrid ? '[*]' : '[ ]') + ' Show map grid.</span><br>' +
 				'<br>'
 			);
 		}
@@ -388,21 +390,6 @@ function Game() {
 	};
 
 	this.onAttack = function(entity) {
-		var current = this.getPlayer().getCurrentHp(), max = this.getPlayer().getMaxHp();
-		Logger.log('FIGHT', entity.getName() + ' has attacked you.', 'red');
-		/*$modalContent.html(
-			'<div style="text-align: center;"><span style="color: green">You</span> VS <span style="color: red">'
-			+ entity.getName() + '</span></div>'
-		).append(
-			$('<div class="bar health"></div>').append(
-				$('<div class="bar-title"></div>').html(current + '/' + max + ' HP')
-			).append(
-				$('<div class="bar-inner"></div>').css('width', String(current / max * 100) + '%')
-			)
-		);
-		$modal.show();
-		modalOpened = 'attack';*/
-
 		var pDamage, eDamage, attXp = 1, defXp = 1;
 
 		while(this.getPlayer().getCurrentHp() !== 0 && entity.getCurrentHp() !== 0) {
@@ -418,14 +405,24 @@ function Game() {
 		} else {
 			Logger.log('FIGHT', 'You have killed ' + entity.getName() + '.', 'green');
 			this.getMap().setEntity(position.x, position.y, 'empty space');
-			this.getMap().render(position.x, position.y);
+			this.getRenderer().renderPoints(this.getMap(), [position], this.getPosition());
 			this.getPlayer().addXp('attack', attXp);
 			this.getPlayer().addXp('defence', defXp);
 		}
 	};
 
 	this.toggleSettings = function(key) {
+		if(settings[key] === 'undefined') {
+			settings[key] = true;
+		}
 		settings[key] = !settings[key];
+		if(key === 'showGrid') {
+			if(settings[key]) {
+				$map.addClass('grid');
+			} else {
+				$map.removeClass('grid');
+			}
+		}
 		this.showModal('settings');
 	};
 
@@ -464,6 +461,11 @@ function Game() {
 	};
 
 	this.save = function() {
+		var maps = this.getMapManager().getMaps(), mapData = {};
+		for(var k in maps) {
+			mapData[k] = maps[k].getSaveData();
+		}
+		this.storage.save('maps', mapData);
 		this.storage.save('player', this.getPlayer().getSaveData());
 		this.storage.save('position', position);
 		this.storage.save('controls', controls);
@@ -471,10 +473,17 @@ function Game() {
 	};
 
 	this.load = function() {
+		var mapData = this.storage.load('mapData', {});
+		for(var k in mapData) {
+			this.getMapManager().getMap(k).setSaveData(mapData[k]);
+		}
 		this.getPlayer().setSaveData(this.storage.load('player', this.getPlayer().getSaveData()));
 		position = this.storage.load('position', position);
 		controls = this.storage.load('controls', controls);
 		settings = this.storage.load('settings', settings);
+		if(settings.showGrid) {
+			$map.addClass('grid');
+		}
 	};
 
 	this.registerEvents = function() {
@@ -482,16 +491,10 @@ function Game() {
 			game.onKeyDown(e);
 		});
 
-		$map.on('mouseover', 'span[data-description]', function() {
+		$map.on('mouseover', 'div[data-description]', function() {
 			game.getRenderer().renderEntityDescription($(this));
-		}).on('mouseout', 'span[data-description]', function() {
-			game.getRenderer().hideEntityDescription();
-		});
-
-		$stats.on('mouseover', 'div[data-description]', function() {
-			game.renderDescription($(this));
 		}).on('mouseout', 'div[data-description]', function() {
-			game.hideDescription();
+			game.getRenderer().hideEntityDescription();
 		});
 
 		$menu.on('click', 'span.menu-item', function() {
@@ -542,7 +545,7 @@ function Game() {
 		this.load();
 		this.save();
 		this.registerEvents();
-		this.renderMap();
+		this.getRenderer().renderFullMap(this.getMap(), this.getPosition());
 		this.getPlayer().onStart();
 	};
 }
@@ -650,7 +653,7 @@ function Player(game) {
 	}
 }
 
-function MapManager(entityManager, $map, $position) {
+function MapManager(entityManager) {
 	var maps = {};
 	var current = undefined;
 
@@ -659,7 +662,7 @@ function MapManager(entityManager, $map, $position) {
 	}
 
 	this.createMap = function() {
-		var map = new Map(entityManager, $map, $position);
+		var map = new Map(entityManager);
 		map.emptyEntity = getEmptyEntity(map);
 		return map;
 	};
@@ -672,6 +675,11 @@ function MapManager(entityManager, $map, $position) {
 		if(name in maps) {
 			current = name;
 		}
+		game.getRenderer().renderFullMap(this.getCurrentMap(), game.getPosition());
+	};
+
+	this.getMaps = function() {
+		return maps;
 	};
 
 	this.getCurrentMap = function() {
@@ -683,7 +691,7 @@ function MapManager(entityManager, $map, $position) {
 	};
 }
 
-function Map(entityManager, $map, $position) {
+function Map(entityManager) {
 	var entities = {};
 	var dynamicEntities = {};
 	var needsRender = false;
@@ -764,7 +772,7 @@ function Map(entityManager, $map, $position) {
 				saveData[key] = data;
 			}
 		}
-		return saveData;
+		return dump(saveData);
 	};
 
 	this.setSaveData = function(data) {
@@ -773,37 +781,6 @@ function Map(entityManager, $map, $position) {
 				entities[key].setSaveData(data[key]);
 			}
 		}
-	};
-
-	this.render = function(x, y) {
-		game.getRenderer().renderFullMap(this, game.getPosition());
-		/*var pPosition = lastRender = {x: x, y: y}; // TODO FIX RENDERING
-		var position = {x: 0, y: 0};
-		x = border.left;
-		y = border.top;
-		var map = '';
-		while(y <= border.bottom) {
-			while(x <= border.right) {
-				if(y == pPosition.y && x == pPosition.x) {
-					map += '<span data-description="you' + ' (' + x + '|' + y + ')" style="color: green">@</span>';
-				} else {
-					var entity = this.getEntity(x, y);
-					var symbol = entity.getChar();
-					var c = entity.getColor();
-					var description = entity.getName() + ' (' + x + '|' + y + ')';
-					map += '<span data-description="' + description + '" style="color: ' + c + '">' + symbol + '</span>';
-				}
-				x++;
-			}
-			map += '\n';
-			x = border.left;
-			y++;
-		}
-		$map.html($('<div id="map-border"></div>').html(map));
-		renderBorder();
-		//$('#map-border').css('top', -border.top * 21).css('left', -border.left * 13).css('bottom', -border.bottom * 21).css('right', -border.right * 13);
-		$position.html('(' + pPosition.x + '|' + pPosition.y + ') - ' + this.getEntity(pPosition.x, pPosition.y).getName());
-		needsRender = false;*/
 	};
 
 	this.onTick = function() {
@@ -964,6 +941,7 @@ function Entity(map) {
 	};
 
 	this.setSaveData = function(saveData) {
+		dump(saveData);
 		for(var key in saveData) {
 			data[key] = saveData[key];
 		}
