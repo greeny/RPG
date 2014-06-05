@@ -61,9 +61,22 @@ pre {
 	overflow-y: scroll;
 }
 
-#inventory {
+#inventory-menu {
 	position: absolute;
 	top: 202px;
+	height: 18px;
+	padding-top: 2px;
+	left: 0;
+	right: 0;
+	background-color: black;
+	overflow-y: scroll;
+	padding-left: 5px;
+}
+
+#inventory {
+	padding: 5px;
+	position: absolute;
+	top: 224px;
 	bottom: 152px;
 	left: 0;
 	right: 0;
@@ -111,13 +124,16 @@ pre {
 }
 
 #map .tile {
+	border-top: 1px solid transparent;
+	border-left: 1px solid transparent;
 	position: absolute;
 	top: 0;
 	left: 0;
 }
 
 #map.grid .tile {
-	border: 1px solid #111111;
+	border-top: 1px solid #111111;
+	border-left: 1px solid #111111;
 }
 
 #map-border {

@@ -1,0 +1,11 @@
+CACHE MANIFEST
+
+js/app/Logger.js
+js/app/Renderer.js
+js/app/script.js
+js/entities.js
+js/essentials.js
+js/map.js
+js/jquery.js
+index.html
+css/style.css

@@ -1,4 +1,5 @@
 function Game() {
+	var items = {};
 	var actionCounter = 0;
 	var position = {
 		x: 0,
@@ -97,7 +98,7 @@ function Game() {
 	var modalOpened = 'none', modalMode = '', timedAction = undefined;
 	var speechEntity = undefined, speechData = {};
 	var lastSave = new Date().getTime();
-	var $map = $('#map'), $menu = $('#menu'), $modal = $('#modal'),
+	var $map = $('#map'), $menu = $('#menu'), $modal = $('#modal'), $inventoryMenu = $('#inventory-menu'), $inventory = $('#inventory'),
 		$stats = $('#stats'), $modalContent = $('#modal-content');
 
 	var entityManager = new EntityManager();
@@ -137,17 +138,13 @@ function Game() {
 		return position;
 	};
 
-	/*this.renderDescription = function($object) {
-		$object.after(
-			$('<pre></pre>')
-				.addClass('description')
-				.html($object.data('description'))
-		);
-	};*/
+	this.addItem = function(name, item) {
+		items[name] = item;
+	};
 
-	/*this.hideDescription = function() {
-		$('.description').remove();
-	};*/
+	this.getItem = function(name) {
+		return new Item(items[name]);
+	};
 
 	this.onKeyDown = function(e) {
 		if(e.which === 187) {
@@ -426,6 +423,10 @@ function Game() {
 		this.showModal('settings');
 	};
 
+	this.onInventoryMenuClick = function(action) {
+		$inventory.html(action);
+	};
+
 	this.onSecond = function() {
 	};
 
@@ -516,6 +517,10 @@ function Game() {
 			}
 		});
 
+		$inventoryMenu.on('click', 'span.menu-item', function() {
+			game.onInventoryMenuClick($(this).data('action'));
+		});
+
 		$modal.on('click', '.modal-close', function() {
 			game.hideModal();
 		});
@@ -553,6 +558,7 @@ function Game() {
 function Player(game) {
 	var currentHp = 10, maxHp = 10;
 	var stats = {};
+	var inventory = {};
 	var defaultStats = {
 		attack: 'Attack',
 		defence: 'Defence',
@@ -566,6 +572,22 @@ function Player(game) {
 			stats: stats
 		});
 	}
+
+	this.addItem = function(name, count) {
+		if(typeof count === 'undefined') {
+			count = 1;
+		}
+		var item = this.getItem(name);
+		if(typeof item === 'undefined') {
+
+		} else {
+			item.addCount(count);
+		}
+	};
+
+	this.getItem = function(name) {
+		return inventory[name];
+	};
 
 	this.getGame = function() {
 		return game;
@@ -651,6 +673,57 @@ function Player(game) {
 	for(var k in defaultStats) {
 		this.addStat(k, defaultStats[k], false);
 	}
+}
+
+function Item(data) {
+	var defaultData = {
+		stats: {},
+		name: 'Unnamed item',
+		description: 'Does nothing',
+		type: 'other',
+		count: 1
+	};
+
+	this.getData = function(key, def) {
+		if(typeof data[key] !== 'undefined') {
+			return data[key];
+		} else {
+			return def;
+		}
+	};
+
+	this.setData = function(key, value) {
+		data[key] = value;
+	};
+
+	this.getName = function() {
+		return this.getData('name', defaultData.name);
+	};
+
+	this.getDescription = function() {
+		return this.getData('description', defaultData.description);
+	};
+
+	this.getType = function() {
+		return this.getData('type', defaultData.type);
+	};
+
+	this.getCount = function() {
+		return this.getData('count', defaultData.count);
+	};
+
+	this.addCount = function(count) {
+		this.setData('count', this.getData('count', defaultData.count) + count);
+	};
+
+	this.getStatBonus = function(stat) {
+		var stats = this.getData('stats', defaultData.stats);
+		if(typeof stats[stat] !== 'undefined') {
+			return stats[stat];
+		} else {
+			return 0;
+		}
+	};
 }
 
 function MapManager(entityManager) {
@@ -747,6 +820,8 @@ function Map(entityManager) {
 		entity.setPosition({x: x, y: y});
 		if(entity.isDynamic()) {
 			dynamicEntities[key] = true;
+		} else {
+			delete dynamicEntities[key];
 		}
 	};
 
