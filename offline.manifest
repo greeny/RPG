@@ -1,5 +1,7 @@
 CACHE MANIFEST
 
+# version 1
+
 js/app/Logger.js
 js/app/Renderer.js
 js/app/script.js

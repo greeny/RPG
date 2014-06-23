@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" manifest="offline.manifest">
+<html lang="en"><!-- manifest="offline.manifest"-->
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -11,9 +11,13 @@
 
 <body>
 	<div id="game-area">
-		<div id="block">Sorry, your browser does not support JavaScript, or it isn't enabled.</div>
+		<div id="block">
+			<div id="block-inner">Sorry, your browser does not support JavaScript, or it isn't enabled.</div>
+		</div>
 		<div id="top-panel">
-			<span id="tile-detail"></span>
+			<span style="color: gray">Current position:</span> <span id="tile-detail"></span>
+			<span style="color: gray"> | Gold:</span>
+			<span style="color: yellow"><span id="gold"></span></span>
 			<span id="menu">|
 				<span class="menu-item" data-action="settings">Settings</span> |
 				<span class="menu-item" data-action="controls">Controls</span> |
@@ -30,7 +34,7 @@
 		<div id="right-panel">
 			<div id="stats"></div>
 			<div id="inventory-menu">
-				<span class="menu-item" data-action="inventory">Inventory</span> |
+				<span class="menu-item active" data-action="inventory">Inventory</span> |
 				<span class="menu-item" data-action="equip">Equip</span> |
 				<span class="menu-item" data-action="quests">Quests</span> |
 				<span class="menu-item" data-action="achievements">Achievements</span>
@@ -44,24 +48,18 @@
 		</div>
 	</div>
 
-	<script>
-		var el = document.getElementById('block');
-		if(typeof Storage === 'undefined') {
-			el.innerHTML = 'Sorry, your browser does not support localStorage for saving game state.';
-		} else {
-			document.getElementById('block').style.display = 'none';
-		}
-	</script>
-
 	<script src="js/jquery.js"></script>
-	<script src="js/essentials.js"></script>
-	<script src="js/app/Renderer.js"></script>
-	<script src="js/app/Logger.js"></script>
 	<script src="js/app/script.js"></script>
-	<script src="js/entities.js"></script>
-	<script src="js/map.js"></script>
+	<script src="js/game.js"></script>
+
 	<script>
-		game.start();
+		var $el = $('#block');
+		if(typeof Storage === 'undefined') {
+			$el.find('#block-inner').html('Sorry, your browser does not support localStorage for saving game state.');
+		} else {
+			$el.find('#block-inner').html('Loading...');
+			game.start();
+		}
 	</script>
 </body>
 </html>

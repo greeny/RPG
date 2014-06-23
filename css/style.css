@@ -13,7 +13,17 @@ pre {
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background-color: white;
+	background-color: black;
+	color: white;
+}
+
+#block-inner {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 50%;
+	margin-top: -1em;
+	text-align: center;
 }
 
 #top-panel {
@@ -35,7 +45,8 @@ pre {
 	cursor: pointer;
 }
 
-.menu-item:hover {
+.menu-item:hover,
+.menu-item.active {
 	color: gray;
 }
 
@@ -84,6 +95,15 @@ pre {
 	overflow-y: scroll;
 }
 
+.inventory-table {
+	margin: 0;
+	border-spacing: 0;
+}
+
+.inventory-table td {
+	padding: 0 15px 0 0;
+}
+
 #log {
 	padding: 5px;
 	display: block;
@@ -123,6 +143,17 @@ pre {
 	color: white;
 }
 
+#map-loading {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	text-align: center;
+	vertical-align: middle;
+	display: none;
+}
+
 #map .tile {
 	border-top: 1px solid transparent;
 	border-left: 1px solid transparent;
@@ -148,7 +179,7 @@ pre {
 
 .description {
 	display: none;
-	margin-top: 5px;
+	padding: 2px;
 	background-color: white;
 	border: 1px solid gray;
 	color: black;
@@ -157,7 +188,16 @@ pre {
 	letter-spacing: normal;
 	z-index: 1000;
 	position: absolute;
+	overflow-x: auto;
+}
+
+#map .description {
 	white-space: nowrap;
+}
+
+.favor {
+	color: gray;
+	font-style: italic;
 }
 
 [data-description]:hover .description {
@@ -195,7 +235,9 @@ pre {
 .modal-close,
 [data-control],
 [data-response],
-[data-settings] {
+[data-settings],
+[data-equip],
+[data-unequip] {
 	cursor: pointer;
 }
 
@@ -203,8 +245,17 @@ pre {
 [data-control]:hover,
 [data-response]:hover,
 [data-settings]:hover,
+[data-equip]:hover,
 [data-control].choosing {
 	color: gray;
+}
+
+[data-equip] {
+	color: yellow;
+}
+
+[data-unequip] {
+	display: inline-block;
 }
 
 .bar {
